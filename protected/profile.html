@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>個人檔案</title>
+    <style>
+        /* 全局樣式 */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to bottom right, #4A90E2, #50E3C2);
+            color: #333;
+        }
+
+        h1 {
+            font-size: 2rem;
+            text-align: center;
+            margin: 20px 0;
+            color: #ffffff;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            text-align: center;
+            margin: 20px 0;
+            color: #ffffff;
+        }
+
+        #container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+        }
+
+        #jwt-container,
+        #key-container {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        h3 {
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+            color: #4A90E2;
+        }
+
+        pre {
+            font-size: 1rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .logout-btn {
+            display: inline-block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            background-color: #f44336;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            text-align: center;
+        }
+
+        .logout-btn:hover {
+            background-color: #d32f2f;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 10px 0;
+            color: #ffffff;
+            font-size: 0.8rem;
+        }
+
+        .footer a {
+            color: #ffffff;
+            text-decoration: underline;
+        }
+
+        .footer a:hover {
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>歡迎來到您的個人檔案</h1>
+    <h2>JWT Token 和密鑰狀態</h2>
+
+    <div id="container">
+        <div id="rsa-container">
+            <h3>RSA 公鑰 / 私鑰：</h3>
+            <pre id="rsa-info">Loading...</pre>
+        </div>        
+
+        <div id="jwt-container">
+            <h3>JWT 資訊：</h3>
+            <pre id="jwt-info">Loading...</pre>
+        </div>
+
+        <button class="logout-btn" id="logout-btn">登出</button>
+    </div>
+    
+    <script>
+        const jwtInfoContainer = document.getElementById('jwt-info');
+        const logoutButton = document.getElementById('logout-btn');
+        
+        function parseJwt(token) {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(
+                atob(base64)
+                    .split('')
+                    .map(c => `%${('00' + c.charCodeAt(0).toString(16)).slice(-2)}`)
+                    .join('')
+            );
+            return JSON.parse(jsonPayload);
+        }
+        
+        function createPayloadTable(payload) {
+            let tableHTML = '<table style="width:100%; border-collapse: collapse;">';
+            tableHTML += '<thead><tr><th style="border:1px solid #ccc;padding:8px;background:#eee;">欄位</th><th style="border:1px solid #ccc;padding:8px;background:#eee;">內容</th></tr></thead><tbody>';
+            for (const key in payload) {
+                tableHTML += `<tr>
+                    <td style="border:1px solid #ccc;padding:8px;">${key}</td>
+                    <td style="border:1px solid #ccc;padding:8px;">${payload[key]}</td>
+                </tr>`;
+            }
+            tableHTML += '</tbody></table>';
+            return tableHTML;
+        }
+        
+        fetch('/api/profile-info', {
+            method: 'GET',
+            credentials: 'include',
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('JWT 驗證失敗或已過期，請重新登入。');
+            }
+            return response.json();
+        })
+        .then(data => {
+            const rsaInfoContainer = document.getElementById('rsa-info');
+        
+            if (data.publicKey && data.privateKey) {
+                rsaInfoContainer.textContent = `Public Key:\n${data.publicKey}\n\nPrivate Key:\n${data.privateKey}`;
+            } else {
+                rsaInfoContainer.textContent = '無法取得 RSA 鍵對';
+            }
+        
+            if (data.jwt) {
+                jwtInfoContainer.textContent = `JWT:\n${data.jwt}`;
+        
+                const jwtPayload = parseJwt(data.jwt);
+        
+                const payloadInfoContainer = document.createElement('div');
+                payloadInfoContainer.style.marginTop = '20px';
+        
+                payloadInfoContainer.innerHTML = `
+                    <div style="margin-bottom:20px;">
+                        <h3>JWT Payload (JSON)：</h3>
+                        <pre style="background:#eef; padding:10px; border-radius:5px; overflow-x:auto;">${JSON.stringify(jwtPayload, null, 2)}</pre>
+                    </div>
+                    <div style="margin-bottom:20px;">
+                        <h3>JWT Payload (表格)：</h3>
+                        ${createPayloadTable(jwtPayload)}
+                    </div>
+                    <div style="margin-bottom:20px;">
+                        <h3>JWT 過期倒數：</h3>
+                        <div id="jwt-countdown" style="font-size:1.5rem; color:red; font-weight:bold;">計算中...</div>
+                        <div style="background-color: #ddd; width: 100%; height: 20px; border-radius: 10px; margin-top:10px; overflow: hidden;">
+                            <div id="countdown-bar" style="background-color: #f44336; height: 100%; width: 100%; transition: width 1s linear;"></div>
+                        </div>
+                    </div>
+                `;
+        
+                document.getElementById('jwt-container').appendChild(payloadInfoContainer);
+        
+                const expirationTime = jwtPayload.exp * 1000;
+                const currentTime = Date.now();
+                let timeUntilExpiry = Math.floor((expirationTime - currentTime) / 1000); // 秒
+                const totalExpiryTime = timeUntilExpiry; // 紀錄一開始的總秒數
+        
+                const countdownElement = document.getElementById('jwt-countdown');
+                const countdownBar = document.getElementById('countdown-bar');
+        
+                if (timeUntilExpiry > 0) {
+                    countdownElement.textContent = `${timeUntilExpiry} 秒`;
+        
+                    const countdownInterval = setInterval(() => {
+                        timeUntilExpiry--;
+        
+                        if (timeUntilExpiry > 0) {
+                            countdownElement.textContent = `${timeUntilExpiry} 秒`;
+                            const percentage = (timeUntilExpiry / totalExpiryTime) * 100;
+                            countdownBar.style.width = `${percentage}%`;
+                        } else {
+                            clearInterval(countdownInterval);
+                            countdownElement.textContent = 'JWT 已過期';
+                            countdownBar.style.width = '0%';
+                            alert('您的 JWT 已過期。您將於 3 秒後被登出。');
+                            setTimeout(() => {
+                                window.location.replace('./login.html');
+                            }, 3000);
+                        }
+                    }, 1000);
+                } else {
+                    countdownElement.textContent = 'JWT 已過期';
+                    countdownBar.style.width = '0%';
+                    alert('您的 JWT 已過期。您將於 3 秒後被登出。');
+                    setTimeout(() => {
+                        window.location.replace('./login.html');
+                    }, 3000);
+                }
+            } else {
+                jwtInfoContainer.textContent = '無法取得 JWT 資訊。';
+            }
+        })
+        .catch(err => {
+            console.error('請求失敗:', err);
+            jwtInfoContainer.textContent = '請重新登入。';
+            alert('您的登入已過期或無效。請重新登入。');
+            window.location.replace('./login.html');
+        });
+        
+        logoutButton.addEventListener('click', async () => {
+            try {
+                const response = await fetch('/logout', { method: 'POST', credentials: 'include' });
+                if (!response.ok) {
+                    throw new Error('後端登出失敗');
+                }
+                window.location.replace('./login.html');
+            } catch (error) {
+                console.error('登出失敗:', error);
+                alert('登出過程失敗，請重試。');
+            }
+        });
+        </script>        
+    
+</body>
+</html>

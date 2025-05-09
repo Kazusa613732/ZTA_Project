@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <style>
+        #signup-btn {
+            margin-left: 10px;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #signup-btn:hover {
+            background-color: #45a049;
+        }
+
+        #login-btn {
+            margin-left: 10px;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #login-btn:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <form id="login-form">
+        <input type="text" placeholder="username" id="username" required />
+        <button id="login-btn" type="submit">Login with Passkey</button>
+        <button id="signup-btn" type="button">Sign Up</button>
+    </form>
+
+    <script src="https://unpkg.com/@simplewebauthn/browser/dist/bundle/index.umd.min.js"></script>
+    <script>
+        const form = document.getElementById('login-form');
+        const usernameField = document.getElementById('username');
+        const signupButton = document.getElementById('signup-btn');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault(); // 防止表單默認提交
+            console.log("表單已提交");
+
+            const username = usernameField.value;
+
+            try {
+                // 發送 login-challenge 請求
+                const challengeResponse = await fetch('/login-challenge', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username }),
+                });
+
+                if (!challengeResponse.ok) {
+                    if (challengeResponse.status === 404) {
+                        alert('無效的使用者名稱，請先註冊！');
+                        return;
+                    }
+                    throw new Error(`login-challenge 請求失敗：${challengeResponse.status}`);
+                }
+
+                const challengeResult = await challengeResponse.json();
+                const { options } = challengeResult;
+
+                // 使用 SimpleWebAuthn 驗證
+                const authenticationResult = await SimpleWebAuthnBrowser.startAuthentication(options);
+
+                // 發送 login-verify 請求
+                const verifyResponse = await fetch('/login-verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, cred: authenticationResult }),
+                });
+
+                if (!verifyResponse.ok) {
+                    throw new Error(`login-verify 請求失敗：${verifyResponse.status}`);
+                }
+
+                const verifyResult = await verifyResponse.json();
+
+                if (verifyResult.success) {
+                    alert('登入成功！');
+                    // 登入成功後直接跳轉，JWT 已自動存儲於 cookies
+                    window.location.replace('/protected/profile.html');
+                } else {
+                    alert(verifyResult.error || '登入失敗');
+                }
+            } catch (error) {
+                console.error("登入過程錯誤：", error);
+                alert(`登入失敗：${error.message}`);
+            }
+        });
+
+        // 註冊按鈕
+        signupButton.addEventListener('click', () => {
+            window.location.replace('signup.html');
+        });
+    </script>
+</body>
+</html>

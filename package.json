@@ -1,0 +1,24 @@
+{
+  "name": "web-authentication",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  },
+  "dependencies": {
+    "@simplewebauthn/server": "^10.0.0",
+    "bcrypt": "^5.1.1",
+    "cookie-parser": "^1.4.7",
+    "express": "^4.21.2",
+    "jose": "^6.0.10",
+    "jsonwebtoken": "^9.0.2",
+    "nginx": "^1.1.0"
+  }
+}

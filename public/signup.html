@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signup</title>
+    <style>
+        #copy-container {
+            display: none;
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        #user-id-input {
+            width: 80%;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        #copy-btn {
+            margin-top: 10px;
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #copy-btn:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <form id="register-form">
+        <input type="text" placeholder="username" id="username" required />
+        <button type="submit">Register</button>
+    </form>
+
+    <div id="copy-container">
+        <p>註冊成功！您的 User ID：</p>
+        <input type="text" id="user-id-input" readonly />
+        <button id="copy-btn">複製 User ID</button>
+    </div>
+
+    <script src="https://unpkg.com/@simplewebauthn/browser/dist/bundle/index.umd.min.js"></script>
+    <script>
+        const form = document.getElementById('register-form');
+        const usernameField = document.getElementById('username');
+        const copyContainer = document.getElementById('copy-container');
+        const userIdInput = document.getElementById('user-id-input');
+        const copyButton = document.getElementById('copy-btn');
+    
+        form.addEventListener('submit', async (e) => {
+    e.preventDefault(); // 阻止表單的默認提交
+    console.log("表單已提交");
+
+    const username = usernameField.value;
+
+    try {
+        // 檢查使用者名稱是否存在
+        console.log("檢查使用者名稱是否存在...");
+        const checkUserResponse = await fetch('/check-user', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username }),
+        });
+
+        if (!checkUserResponse.ok) {
+            throw new Error(`檢查使用者名稱失敗：${checkUserResponse.status}`);
+        }
+
+        const userCheckResult = await checkUserResponse.json();
+
+        if (userCheckResult.exists) {
+            throw new Error("使用者名稱已存在，請選擇其他名稱。");
+        }
+
+        console.log("使用者名稱可用，開始註冊...");
+
+        // 發送註冊請求
+        const registerResponse = await fetch('/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username }),
+        });
+
+        if (!registerResponse.ok) {
+            throw new Error(`註冊請求失敗：${registerResponse.status}`);
+        }
+
+        console.log("註冊成功，開始 FIDO2 註冊挑戰...");
+
+        // 發送 FIDO2 註冊挑戰請求
+        const challengeResponse = await fetch('/register-challenge', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username }),
+        });
+
+        if (!challengeResponse.ok) {
+            throw new Error(`FIDO2 註冊挑戰請求失敗：${challengeResponse.status}`);
+        }
+
+        const challengeResult = await challengeResponse.json();
+        console.log("FIDO2 挑戰回應：", challengeResult);
+
+        const { options } = challengeResult;
+
+        // 執行 FIDO2 註冊
+        const authenticationResult = await SimpleWebAuthnBrowser.startRegistration({ ...options });
+        console.log("FIDO2 註冊結果：", authenticationResult);
+
+        // 驗證 FIDO2 註冊結果
+        const verifyResponse = await fetch('/register-verify', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, cred: authenticationResult }),
+        });
+
+        if (!verifyResponse.ok) {
+            throw new Error(`FIDO2 驗證請求失敗：${verifyResponse.status}`);
+        }
+
+        console.log("FIDO2 註冊完成");
+        alert("註冊成功！您現在可以登入了。");
+
+        // 延遲 3 秒後跳轉到登入頁面
+        setTimeout(() => {
+            window.location.replace(`http://localhost:3000/login.html`);
+        }, 3000);
+    } catch (error) {
+        console.error("錯誤發生：", error);
+        alert(`註冊失敗：${error.message}`);
+    }
+}); 
+    </script>
+     
+</body>
+</html>
