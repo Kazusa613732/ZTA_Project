@@ -91,7 +91,7 @@
                 if (verifyResult.success) {
                     alert('登入成功！');
                     // 登入成功後直接跳轉，JWT 已自動存儲於 cookies
-                    window.location.replace('/protected/profile.html');
+                    window.location.href = "http://localhost:3300/protected/profile.html";
                 } else {
                     alert(verifyResult.error || '登入失敗');
                 }

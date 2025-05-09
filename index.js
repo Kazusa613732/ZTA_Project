@@ -1,4 +1,3 @@
-// jwt_aes_rs256_auth.js
 const express = require("express");
 const crypto = require("crypto");
 const cookieParser = require("cookie-parser");
@@ -22,12 +21,23 @@ app.use(express.static("./public"));
 app.use(express.json());
 app.use(cookieParser());
 
-// === RSA 鍵對生成 ===
-const { publicKey, privateKey } = crypto.generateKeyPairSync("rsa", {
-  modulusLength: 2048,
-  publicKeyEncoding: { type: "pkcs1", format: "pem" },
-  privateKeyEncoding: { type: "pkcs1", format: "pem" },
-});
+// === RSA 金鑰持久化與生成 ===
+let publicKey, privateKey;
+
+if (fs.existsSync("./public_key.pem") && fs.existsSync("./private_key.pem")) {
+  publicKey = fs.readFileSync("./public_key.pem", "utf8");
+  privateKey = fs.readFileSync("./private_key.pem", "utf8");
+} else {
+  const keyPair = crypto.generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+    publicKeyEncoding: { type: "pkcs1", format: "pem" },
+    privateKeyEncoding: { type: "pkcs1", format: "pem" },
+  });
+  publicKey = keyPair.publicKey;
+  privateKey = keyPair.privateKey;
+  fs.writeFileSync("./public_key.pem", publicKey);
+  fs.writeFileSync("./private_key.pem", privateKey);
+}
 
 // === AES 包裝私鑰 ===
 const aesKey = crypto.randomBytes(32);
@@ -58,28 +68,12 @@ const getPublicKey = () => publicKey;
 const userStore = {};
 const challengeStore = {};
 
-const requireAuth = (req, res, next) => {
-  const token = req.cookies.jwt;
-  if (!token) return res.redirect("/login.html");
-  try {
-    const payload = jwt.verify(token, getPublicKey(), {
-      algorithms: ["RS256"],
-    });
-    if (payload.dest !== "http://localhost:3000/protected/profile.html") {
-      console.warn("JWT dest 不正確，拒絕存取！");
-      return res.redirect("/login.html");
-    }
-    next();
-  } catch (err) {
-    return res.redirect("/login.html");
-  }
-};
-
 app.use((req, res, next) => {
   res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
   next();
 });
 
+// === 註冊 ===
 app.post("/register", (req, res) => {
   const { username, password } = req.body;
   if (Object.values(userStore).some((u) => u.username === username)) {
@@ -91,12 +85,14 @@ app.post("/register", (req, res) => {
   return res.json({ id });
 });
 
+// === 檢查使用者是否存在 ===
 app.post("/check-user", (req, res) => {
   const { username } = req.body;
   const exists = Object.values(userStore).some((u) => u.username === username);
   return res.json({ exists });
 });
 
+// === FIDO2 註冊挑戰 ===
 app.post("/register-challenge", async (req, res) => {
   const { username } = req.body;
   const user = Object.values(userStore).find((u) => u.username === username);
@@ -114,6 +110,7 @@ app.post("/register-challenge", async (req, res) => {
   return res.json({ options: challengePayload });
 });
 
+// === FIDO2 註冊驗證 ===
 app.post("/register-verify", async (req, res) => {
   const { username, cred } = req.body;
   const user = Object.values(userStore).find((u) => u.username === username);
@@ -132,6 +129,7 @@ app.post("/register-verify", async (req, res) => {
   return res.json({ verified: true });
 });
 
+// === FIDO2 登入挑戰 ===
 app.post("/login-challenge", async (req, res) => {
   const { username } = req.body;
   const user = Object.values(userStore).find((u) => u.username === username);
@@ -142,6 +140,7 @@ app.post("/login-challenge", async (req, res) => {
   return res.json({ options });
 });
 
+// === FIDO2 登入驗證 ===
 app.post("/login-verify", async (req, res) => {
   const { username, cred } = req.body;
   const user = Object.values(userStore).find((u) => u.username === username);
@@ -161,7 +160,7 @@ app.post("/login-verify", async (req, res) => {
   const token = jwt.sign(
     {
       username: user.username,
-      dest: "http://localhost:3000/protected/profile.html",
+      dest: "http://localhost:3300/protected/profile.html",
     },
     getPrivateKey(),
     {
@@ -180,16 +179,14 @@ app.post("/login-verify", async (req, res) => {
   return res.json({ success: true });
 });
 
+// === 登出 ===
 app.post("/logout", (req, res) => {
   res.clearCookie("jwt", { httpOnly: true, secure: false, sameSite: "strict" });
   return res.json({ message: "登出成功" });
 });
 
-app.get("/protected/profile", requireAuth, (req, res) => {
-  res.sendFile(__dirname + "/protected/profile.html");
-});
-
-app.get("/api/profile-info", requireAuth, (req, res) => {
+// === JWT 驗證 & 公開資訊回傳（測試用） ===
+app.get("/api/profile-info", (req, res) => {
   const token = req.cookies.jwt;
   try {
     jwt.verify(token, getPublicKey(), { algorithms: ["RS256"] });
@@ -203,7 +200,5 @@ app.get("/api/profile-info", requireAuth, (req, res) => {
     return res.status(401).json({ error: "驗證失敗" });
   }
 });
-
-app.use("/protected", requireAuth, express.static("./protected"));
 
 app.listen(PORT, () => console.log(`伺服器啟動於 PORT: ${PORT}`));

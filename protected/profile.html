@@ -99,7 +99,7 @@
     <div id="container">
         <div id="rsa-container">
             <h3>RSA 公鑰 / 私鑰：</h3>
-            <pre id="rsa-info">Loading...</pre>
+            <pre id="rsa-info">🤐</pre>
         </div>        
 
         <div id="jwt-container">
@@ -152,11 +152,11 @@
         .then(data => {
             const rsaInfoContainer = document.getElementById('rsa-info');
         
-            if (data.publicKey && data.privateKey) {
+            /*if (data.publicKey && data.privateKey) {
                 rsaInfoContainer.textContent = `Public Key:\n${data.publicKey}\n\nPrivate Key:\n${data.privateKey}`;
             } else {
                 rsaInfoContainer.textContent = '無法取得 RSA 鍵對';
-            }
+            }*/
         
             if (data.jwt) {
                 jwtInfoContainer.textContent = `JWT:\n${data.jwt}`;
@@ -210,7 +210,7 @@
                             countdownBar.style.width = '0%';
                             alert('您的 JWT 已過期。您將於 3 秒後被登出。');
                             setTimeout(() => {
-                                window.location.replace('./login.html');
+                                window.location.replace('http://localhost:3000/login.html');
                             }, 3000);
                         }
                     }, 1000);
@@ -219,7 +219,7 @@
                     countdownBar.style.width = '0%';
                     alert('您的 JWT 已過期。您將於 3 秒後被登出。');
                     setTimeout(() => {
-                        window.location.replace('./login.html');
+                        window.location.replace('http://localhost:3000/login.html');
                     }, 3000);
                 }
             } else {
@@ -230,7 +230,7 @@
             console.error('請求失敗:', err);
             jwtInfoContainer.textContent = '請重新登入。';
             alert('您的登入已過期或無效。請重新登入。');
-            window.location.replace('./login.html');
+            window.location.replace('http://localhost:3000/login.html');
         });
         
         logoutButton.addEventListener('click', async () => {
@@ -239,7 +239,7 @@
                 if (!response.ok) {
                     throw new Error('後端登出失敗');
                 }
-                window.location.replace('./login.html');
+                window.location.replace('http://localhost:3000/login.html');
             } catch (error) {
                 console.error('登出失敗:', error);
                 alert('登出過程失敗，請重試。');
