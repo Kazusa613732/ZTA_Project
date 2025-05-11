@@ -31,7 +31,7 @@ const requireAuth = (req, res, next) => {
   try {
     const payload = jwt.verify(token, publicKey, { algorithms: ["RS256"] });
 
-    if (payload.dest !== "http://localhost:3300/protected/profile.html") {
+    if (payload.dest !== "https://kazusapoi.site/protected/profile.html") {
       return res.status(403).send("拒絕存取：dest 欄位不符");
     }
 
@@ -73,6 +73,6 @@ app.post("/logout", (req, res) => {
 });
 
 // 啟動伺服器
-app.listen(PORT, () => {
-  console.log(`✅ Protected server running on http://localhost:${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`✅ Protected server running on 0.0.0.0:${PORT}`);
 });

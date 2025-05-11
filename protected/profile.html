@@ -210,7 +210,7 @@
                             countdownBar.style.width = '0%';
                             alert('您的 JWT 已過期。您將於 3 秒後被登出。');
                             setTimeout(() => {
-                                window.location.replace('http://localhost:3000/login.html');
+                                window.location.replace('https://kazusapoi.site/login.html');
                             }, 3000);
                         }
                     }, 1000);
@@ -219,7 +219,7 @@
                     countdownBar.style.width = '0%';
                     alert('您的 JWT 已過期。您將於 3 秒後被登出。');
                     setTimeout(() => {
-                        window.location.replace('http://localhost:3000/login.html');
+                        window.location.replace('https://kazusapoi.site/login.html');
                     }, 3000);
                 }
             } else {
@@ -230,7 +230,7 @@
             console.error('請求失敗:', err);
             jwtInfoContainer.textContent = '請重新登入。';
             alert('您的登入已過期或無效。請重新登入。');
-            window.location.replace('http://localhost:3000/login.html');
+            window.location.replace('https://kazusapoi.site/login.html');
         });
         
         logoutButton.addEventListener('click', async () => {
@@ -239,7 +239,7 @@
                 if (!response.ok) {
                     throw new Error('後端登出失敗');
                 }
-                window.location.replace('http://localhost:3000/login.html');
+                window.location.replace('https://kazusapoi.site/login.html');
             } catch (error) {
                 console.error('登出失敗:', error);
                 alert('登出過程失敗，請重試。');

@@ -99,8 +99,8 @@ app.post("/register-challenge", async (req, res) => {
   if (!user) return res.status(404).json({ error: "找不到使用者" });
 
   const challengePayload = await generateRegistrationOptions({
-    rpID: "localhost",
-    rpName: "本地伺服器",
+    rpID: "kazusapoi.site",
+    rpName: "Kazusa WebAuthn",
     attestationType: "none",
     userName: user.username,
     timeout: 30000,
@@ -119,8 +119,8 @@ app.post("/register-verify", async (req, res) => {
   const challenge = challengeStore[username];
   const result = await verifyRegistrationResponse({
     expectedChallenge: challenge,
-    expectedOrigin: "http://localhost:3000",
-    expectedRPID: "localhost",
+    expectedOrigin: "https://kazusapoi.site",
+    expectedRPID: "kazusapoi.site",
     response: cred,
   });
 
@@ -135,7 +135,9 @@ app.post("/login-challenge", async (req, res) => {
   const user = Object.values(userStore).find((u) => u.username === username);
   if (!user) return res.status(404).json({ error: "找不到使用者" });
 
-  const options = await generateAuthenticationOptions({ rpID: "localhost" });
+  const options = await generateAuthenticationOptions({
+    rpID: "kazusapoi.site",
+  });
   challengeStore[username] = options.challenge;
   return res.json({ options });
 });
@@ -149,8 +151,8 @@ app.post("/login-verify", async (req, res) => {
   const challenge = challengeStore[username];
   const result = await verifyAuthenticationResponse({
     expectedChallenge: challenge,
-    expectedOrigin: "http://localhost:3000",
-    expectedRPID: "localhost",
+    expectedOrigin: "https://kazusapoi.site",
+    expectedRPID: "kazusapoi.site",
     response: cred,
     authenticator: user.passkey,
   });
@@ -160,7 +162,7 @@ app.post("/login-verify", async (req, res) => {
   const token = jwt.sign(
     {
       username: user.username,
-      dest: "http://localhost:3300/protected/profile.html",
+      dest: "https://kazusapoi.site/protected/profile.html",
     },
     getPrivateKey(),
     {
@@ -201,4 +203,8 @@ app.get("/api/profile-info", (req, res) => {
   }
 });
 
-app.listen(PORT, () => console.log(`伺服器啟動於 PORT: ${PORT}`));
+app.get("/", (req, res) => {
+  res.sendFile(__dirname + "/public/login.html");
+});
+
+app.listen(PORT, "0.0.0.0", () => console.log(`伺服器啟動於 PORT: ${PORT}`));
